@@ -182,7 +182,7 @@ let db=null,owner=false,edit=false,canW=null,ov={},picks={},extras=[],lockH=null
 function merged(allL){
   const out=[];
   base.forEach(b=>{const o=ov[b.id];if(o&&o.del)return;out.push(o?Object.assign({},b,o,{id:b.id,img:o.img||b.img,off:o.img?true:b.off}):b)});
-  Object.keys(ov).filter(k=>!base.some(b=>b.id===k)&&!ov[k].del).sort().forEach(k=>out.push(Object.assign({off:true},ov[k],{id:k})));
+  Object.keys(ov).filter(k=>!base.some(b=>b.id===k)&&!ov[k].del&&!ov[k].occ).sort().forEach(k=>out.push(Object.assign({off:true},ov[k],{id:k})));
   out.forEach(x=>{const o=out.find(y=>y!==x&&pkey(y)===pkey(x));x.also=o?(o.list||"m"):""});
   return allL?out:out.filter(x=>(x.list||"m")===cur);
 }
