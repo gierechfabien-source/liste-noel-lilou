@@ -460,7 +460,7 @@ function kidShow(){
 /* côté Papa : panneau de validation */
 async function accept(w,list){
   const p=parseFloat(String(w.p).replace(",",".").replace(/[^\d.]/g,""));
-  const d={n:w.n,p:isNaN(p)?null:p,s:(({noel:"Noël",anniv:"Anniversaire",envie:"Envie"})[w.c]?({noel:"Noël",anniv:"Anniversaire",envie:"Envie"})[w.c]+" · ":"")+"Idée de "+(KIDS[w.kid]||w.kid),u:w.l||"",list:list};if(w.i)d.img=w.i;
+  const d={n:w.n,p:isNaN(p)?null:p,from:w.kid,s:(({noel:"Noël",anniv:"Anniversaire",envie:"Envie"})[w.c]?({noel:"Noël",anniv:"Anniversaire",envie:"Envie"})[w.c]+" · ":"")+"Idée de "+(KIDS[w.kid]||w.kid),u:w.l||"",list:list};if(w.i)d.img=w.i;
   if(await wr("items/n"+Date.now(),d))await del("extras/"+w.id)}
 function wishAdm(){
   if(!edit)return;const a=$("adm");if(!a)return;
