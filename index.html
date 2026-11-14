@@ -191,11 +191,11 @@ function render(){
   $("pg").style.width=(n?100*r/n:0)+"%";
   $("tl").style.display=edit?"block":"none";
   $("lk").textContent=edit?"🔓 Quitter l'édition":"🔒 Édition";
-  $("lk").style.display=owner?"block":"none";
+  $("lk").style.display="block";
   $("bn").style.display=edit?"block":"none";
   $("bx").style.display=edit&&$("hd").classList.contains("has-img")?"block":"none";
   const inf=$("info");inf.innerHTML="";
-  if(!db){inf.innerHTML='<p class="msg warn">Liste en lecture seule : les réservations ne sont pas disponibles sur cet affichage.</p>'}
+  if(!db){inf.innerHTML='<p class="msg warn">Connexion à la base impossible : la liste s’affiche mais les réservations sont indisponibles. Recharge la page.</p>'}
   else if(canW===false&&!owner){inf.innerHTML='<p class="msg warn">Pour réserver un cadeau, il faut avoir accès en tant que contributeur à cette page.</p>'}
   renderAdm();
 }
@@ -232,7 +232,7 @@ function openSheet(it){
     r.querySelector("#x2").onclick=async()=>{const nm=$("pn").value.trim();if(!nm){$("pn").focus();return}
       const b=r.querySelector("#x2");b.disabled=true;
       try{const cur=await db.doc("picks/"+it.id).get();if(cur.exists){alert("Oups, quelqu'un vient de réserver ce cadeau !");b.disabled=false;return}}catch(e){}
-      if(await wr("picks/"+it.id,{name:nm,at:Date.now()})){closeSh();reward(nm)}else b.disabled=false};
+      try{await db.doc("picks/"+it.id).set({name:nm,at:Date.now()});closeSh();reward(nm)}catch(e){alert("Oups, ce cadeau vient d'être réservé par quelqu'un d'autre.");b.disabled=false}};
   }else{
     const r=document.createElement("div");r.className="row";r.innerHTML='<button class="b2" id="x1">Fermer</button>';s.appendChild(r);r.querySelector("#x1").onclick=closeSh;
     if(!db||canW===false)s.insertAdjacentHTML("beforeend",'<p class="msg warn">Réservation indisponible pour toi sur cette page.</p>');
@@ -260,13 +260,20 @@ function reward(nm){
 $("rw").onclick=()=>$("rw").classList.remove("on");
 
 // édition (propriétaire)
-$("lk").onclick=async()=>{
+$("lk").onclick=()=>{
   if(edit){edit=false;render();return}
-  const c=prompt(lockH?"Code d'édition :":"Choisis un code d'édition (4 caractères minimum) :");
-  if(c===null)return;
-  if(lockH){if(hash(c)!==lockH){alert("Code incorrect");return}}
-  else{if(c.length<4){alert("Code trop court");return}if(!await wr("cfg/lock",{h:hash(c)}))return}
-  edit=true;render();
+  if(!db||!FBA){alert("Connexion indisponible pour le moment");return}
+  const go=async u=>{
+    if(hash((u.email||"").toLowerCase())!==OWNER_H){try{await FBA.Au.signOut(FBA.auth)}catch(e){}alert("Accès réservé au propriétaire de la liste");return}
+    owner=true;
+    const c=prompt(lockH?"Code d'édition :":"Choisis un code d'édition (4 caractères minimum) :");
+    if(c===null)return;
+    if(lockH){if(hash(c)!==lockH){alert("Code incorrect");return}}
+    else{if(c.length<4){alert("Code trop court");return}if(!await wr("cfg/lock",{h:hash(c)}))return}
+    edit=true;render();
+  };
+  if(FBA.auth.currentUser){go(FBA.auth.currentUser);return}
+  FBA.Au.signInWithPopup(FBA.auth,new FBA.Au.GoogleAuthProvider()).then(r=>go(r.user)).catch(()=>alert("Connexion Google impossible (fenêtre bloquée ?)"));
 };
 function openEd(it){
   editing=it;newImg=undefined;
@@ -297,19 +304,29 @@ $("bf").onchange=e=>{const f=e.target.files[0];if(!f)return;shrink(f,1000,.72,u=
 $("bx").onclick=()=>del("cfg/banner");
 
 render();
+const FBC={apiKey:"AIzaSyBYNEjVg4wrSLJRo6wMXl_Hd9lb2JDeHO0",authDomain:"liste-noel-lilou.firebaseapp.com",projectId:"liste-noel-lilou",storageBucket:"liste-noel-lilou.firebasestorage.app",messagingSenderId:"1037196943479",appId:"1:1037196943479:web:540fcf7d56f238043a2672"};
+const OWNER_H="418829104";
+let FBA=null;
 (async()=>{
-  try{const u=await claude.use("user");if(u){owner=await u.isOwner();canW=await u.can("data.write")}}catch(e){}
-  try{db=await claude.use("db")}catch(e){}
+  try{
+    const b="https://www.gstatic.com/firebasejs/10.14.1/";
+    const [A,F,Au]=await Promise.all([import(b+"firebase-app.js"),import(b+"firebase-firestore.js"),import(b+"firebase-auth.js")]);
+    const app=A.initializeApp(FBC),fs=F.getFirestore(app),auth=Au.getAuth(app);
+    FBA={Au,auth};
+    db={doc:p=>({get:async()=>{const x=await F.getDoc(F.doc(fs,p));return{exists:x.exists(),data:()=>x.data()}},set:d=>F.setDoc(F.doc(fs,p),d),delete:()=>F.deleteDoc(F.doc(fs,p))}),
+       collection:c=>({add:d=>F.addDoc(F.collection(fs,c),d),onSnapshot:(n,e)=>F.onSnapshot(F.collection(fs,c),x=>n({docs:x.docs.map(d=>({id:d.id,data:()=>d.data()}))}),e)})};
+  }catch(e){console.warn(e)}
   render();
   if(!db)return;
   const fail=e=>{console.warn(e)};
   const slow=setTimeout(()=>{$("info").insertAdjacentHTML("afterbegin",'<p class="msg">Synchronisation lente… les réservations peuvent ne pas être à jour.</p>')},10000);
   const ok=()=>{if(!sync){sync=true;clearTimeout(slow);const m=$("info").querySelector(".msg:not(.warn)");if(m)m.remove()}};
-  db.collection("items").onSnapshot(s=>{ov={};s.docs.forEach(d=>ov[d.id]=d.data());ok();render()},fail);
-  db.collection("picks").onSnapshot(s=>{picks={};s.docs.forEach(d=>picks[d.id]=d.data());ok();render()},fail);
-  db.collection("extras").onSnapshot(s=>{extras=s.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>(a.at||0)-(b.at||0));render()},fail);
-  db.collection("cfg").onSnapshot(s=>{lockH=null;let b=null;s.docs.forEach(d=>{if(d.id==="lock")lockH=d.data().h;if(d.id==="banner")b=d.data().u});setBanner(b);render()},fail);
+  db.collection("items").onSnapshot(x=>{ov={};x.docs.forEach(d=>ov[d.id]=d.data());ok();render()},fail);
+  db.collection("picks").onSnapshot(x=>{picks={};x.docs.forEach(d=>picks[d.id]=d.data());ok();render()},fail);
+  db.collection("extras").onSnapshot(x=>{extras=x.docs.map(d=>Object.assign({id:d.id},d.data())).sort((p,q)=>(p.at||0)-(q.at||0));render()},fail);
+  db.collection("cfg").onSnapshot(x=>{lockH=null;let bn=null;x.docs.forEach(d=>{if(d.id==="lock")lockH=d.data().h;if(d.id==="banner")bn=d.data().u});setBanner(bn);render()},fail);
 })();
+
 </script>
 </body>
 </html>
