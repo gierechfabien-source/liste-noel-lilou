@@ -371,13 +371,14 @@ let FBA=null;
 })();
 
 /* ===== Souhaits des enfants (Lilou, Mahily) ===== */
+if(location.hash==="#souhaits")location.replace("/mes-souhaits/");
 (function(){
 const KIDS={lilou:"Lilou",mahily:"Mahily"};
 const hh=t=>{let a=5381;for(const c of "kid|"+t)a=((a<<5)+a+c.charCodeAt(0))>>>0;return String(a)};
 const WHO={"3221070337":"lilou","3221107392":"mahily"};
 const isW=x=>x&&typeof x.name==="string"&&x.name.indexOf("souhait:")===0;
 const parseW=x=>{let o={};try{o=JSON.parse(x.url||"{}")||{}}catch(e){}
-  return{id:x.id,kid:x.name.slice(8),n:String(x.gift||""),l:safeUrl(o.l)||"",i:(typeof o.i==="string"&&o.i.indexOf("data:image/")===0)?o.i:"",p:String(o.p||""),at:x.at||0}};
+  return{id:x.id,kid:x.name.slice(8),n:String(x.gift||""),l:safeUrl(o.l)||"",i:(typeof o.i==="string"&&o.i.indexOf("data:image/")===0)?o.i:"",p:String(o.p||""),c:String(o.c||""),at:x.at||0}};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const thumb=w=>'<div style="width:64px;height:64px;flex:none;border-radius:14px;background:#eaf2ff;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:28px">'+(w.i?'<img src="'+w.i+'" style="width:100%;height:100%;object-fit:cover" alt="">':'🎁')+'</div>';
 let K=null;try{const w=localStorage.getItem("kidwho");if(KIDS[w])K=w}catch(e){}
@@ -459,7 +460,7 @@ function kidShow(){
 /* côté Papa : panneau de validation */
 async function accept(w,list){
   const p=parseFloat(String(w.p).replace(",",".").replace(/[^\d.]/g,""));
-  const d={n:w.n,p:isNaN(p)?null:p,s:"Idée de "+(KIDS[w.kid]||w.kid),u:w.l||"",list:list};if(w.i)d.img=w.i;
+  const d={n:w.n,p:isNaN(p)?null:p,s:(({noel:"Noël",anniv:"Anniversaire",envie:"Envie"})[w.c]?({noel:"Noël",anniv:"Anniversaire",envie:"Envie"})[w.c]+" · ":"")+"Idée de "+(KIDS[w.kid]||w.kid),u:w.l||"",list:list};if(w.i)d.img=w.i;
   if(await wr("items/n"+Date.now(),d))await del("extras/"+w.id)}
 function wishAdm(){
   if(!edit)return;const a=$("adm");if(!a)return;
@@ -470,7 +471,7 @@ function wishAdm(){
   const B=(t,c,fn)=>{const b=document.createElement("button");b.textContent=t;b.style.cssText="border:0;border-radius:10px;padding:8px 10px;font-weight:700;color:#fff;background:"+c+";cursor:pointer;margin:3px 4px 0 0";b.onclick=fn;return b};
   ws.forEach(w=>{const r=document.createElement("div");r.style.cssText="display:flex;gap:10px;align-items:flex-start;margin:12px 0;padding-top:10px;border-top:1px solid #e3e9fb";
     const t=document.createElement("div");t.style.cssText="flex:1;min-width:0";
-    t.innerHTML='<div style="font-weight:700;overflow-wrap:anywhere">'+esc(w.n)+'</div><div style="font-size:13px;opacity:.75">Souhait de '+esc(KIDS[w.kid]||w.kid)+(w.p?' · '+esc(w.p):'')+'</div>'+(w.l?'<div><a href="'+esc(w.l)+'" target="_blank" rel="noopener">🔗 Voir le lien</a></div>':'');
+    t.innerHTML='<div style="font-weight:700;overflow-wrap:anywhere">'+esc(w.n)+'</div><div style="font-size:13px;opacity:.75">'+(({noel:"🎄 Noël",anniv:"🎂 Anniversaire",envie:"💖 Envie"})[w.c]?({noel:"🎄 Noël",anniv:"🎂 Anniversaire",envie:"💖 Envie"})[w.c]+' · ':'')+'Souhait de '+esc(KIDS[w.kid]||w.kid)+(w.p?' · '+esc(w.p):'')+'</div>'+(w.l?'<div><a href="'+esc(w.l)+'" target="_blank" rel="noopener">🔗 Voir le lien</a></div>':'');
     const bt=document.createElement("div");
     bt.append(B("→ Chez Maman","#4b8df0",()=>accept(w,"m")),B("→ Chez Papa","#8b6cf0",()=>accept(w,"p")),B("Refuser","#e0607e",()=>{if(confirm("Refuser ce souhait ?"))del("extras/"+w.id)}));
     t.appendChild(bt);r.insertAdjacentHTML("beforeend",thumb(w));r.appendChild(t);h.appendChild(r)});
