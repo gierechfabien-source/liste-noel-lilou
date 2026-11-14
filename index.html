@@ -118,7 +118,7 @@ main{max-width:640px;margin:0 auto;padding:0 12px}
 <label>Prix (€) — laisse vide si inconnu</label><input type="number" id="fp" step="0.01" inputmode="decimal">
 <label>Détails (séparés par ·) — ex : Dès 8 ans · 626 pièces</label><input type="text" id="fs">
 <label>Lien du produit (facultatif)</label><input type="text" id="fu" placeholder="https://…" inputmode="url">
-<label>Photo (facultatif)</label><input type="file" id="ff" accept="image/*"><img class="pv" id="pv" alt="">
+<label>Photo (facultatif)</label><input type="file" id="ff" accept="image/*"><img class="pv" id="pv" alt=""><button class="lkb" id="fcp" style="display:none;width:100%;border:0"></button>
 <div class="row"><button class="b3" id="fd">Supprimer</button><button class="b2" id="fc">Annuler</button><button class="b1" id="fo">Enregistrer</button></div>
 </div></div>
 <div class="mask" id="m2"><div class="sheet" id="sh2"></div></div>
@@ -174,6 +174,7 @@ function merged(allL){
   const out=[];
   base.forEach(b=>{const o=ov[b.id];if(o&&o.del)return;out.push(o?Object.assign({},b,o,{id:b.id,img:o.img||b.img,off:o.img?true:b.off}):b)});
   Object.keys(ov).filter(k=>!base.some(b=>b.id===k)&&!ov[k].del).sort().forEach(k=>out.push(Object.assign({off:true},ov[k],{id:k})));
+  out.forEach(x=>{const o=out.find(y=>y!==x&&pkey(y)===pkey(x));x.also=o?(o.list||"m"):""});
   return allL?out:out.filter(x=>(x.list||"m")===cur);
 }
 function hash(t){let h=5381;for(const c of "noel|"+t)h=((h<<5)+h+c.charCodeAt(0))>>>0;return String(h)}
@@ -303,9 +304,14 @@ function openEd(it){
   $("mt").textContent=it?"Modifier le cadeau":"Nouveau cadeau";
   $("fn").value=it?it.n:"";$("fp").value=it&&it.p!=null?it.p:"";$("fs").value=it?it.s||"":"";$("fu").value=it?it.u||"":"";
   $("ff").value="";$("pv").src=it&&it.img?it.img:"";$("pv").style.display=it&&it.img?"block":"none";
-  $("fd").style.display=it?"block":"none";$("mask").classList.add("on");
+  $("fd").style.display=it?"block":"none";$("fcp").style.display=it?"block":"none";$("fcp").textContent="📋 Copier dans la liste de "+LN[(it&&it.list||"m")==="m"?"p":"m"];$("mask").classList.add("on");
 }
 const closeEd=()=>$("mask").classList.remove("on");
+$("fcp").onclick=async()=>{if(!editing)return;const it=editing,to=(it.list||"m")==="m"?"p":"m";
+  if(merged(true).some(y=>y!==it&&pkey(y)===pkey(it)&&(y.list||"m")===to)){alert("Ce cadeau est déjà dans la liste de "+LN[to]);return}
+  const d={n:it.n,p:it.p==null?null:it.p,s:it.s||"",u:it.u||"",list:to,key:pkey(it)};
+  if(it.img&&String(it.img).startsWith("data:"))d.img=it.img;
+  if(await wr("items/n"+Date.now(),d)){closeEd();alert("Copié dans la liste de "+LN[to]+" ✔")}};
 $("fc").onclick=closeEd;
 $("mask").onclick=e=>{if(e.target===$("mask"))closeEd()};
 $("ff").onchange=e=>{const f=e.target.files[0];if(!f)return;shrink(f,260,.8,u=>{newImg=u;$("pv").src=u;$("pv").style.display="block"})};
