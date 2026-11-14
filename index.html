@@ -373,13 +373,15 @@ let FBA=null;
 /* ===== Souhaits des enfants (Lilou, Mahily) ===== */
 (function(){
 const KIDS={lilou:"Lilou",mahily:"Mahily"};
+const hh=t=>{let a=5381;for(const c of "kid|"+t)a=((a<<5)+a+c.charCodeAt(0))>>>0;return String(a)};
+const WHO={"3221070337":"lilou","3221107392":"mahily"};
 const isW=x=>x&&typeof x.name==="string"&&x.name.indexOf("souhait:")===0;
 const parseW=x=>{let o={};try{o=JSON.parse(x.url||"{}")||{}}catch(e){}
   return{id:x.id,kid:x.name.slice(8),n:String(x.gift||""),l:safeUrl(o.l)||"",i:(typeof o.i==="string"&&o.i.indexOf("data:image/")===0)?o.i:"",p:String(o.p||""),at:x.at||0}};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const thumb=w=>'<div style="width:64px;height:64px;flex:none;border-radius:14px;background:#eaf2ff;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:28px">'+(w.i?'<img src="'+w.i+'" style="width:100%;height:100%;object-fit:cover" alt="">':'🎁')+'</div>';
-let K=null;
-const slug=()=>{const m=/^#souhaits-(lilou|mahily)$/i.exec(location.hash||"");return m?m[1].toLowerCase():null};
+let K=null;try{const w=localStorage.getItem("kidwho");if(KIDS[w])K=w}catch(e){}
+const isKid=()=>(location.hash||"").toLowerCase()==="#souhaits";
 
 function kidRender(){
   const L=document.getElementById("kd_list");if(!L||!K)return;
@@ -391,16 +393,33 @@ function kidRender(){
     d.innerHTML=thumb(w)+'<div style="flex:1;min-width:0"><div style="font-weight:700;overflow-wrap:anywhere">'+esc(w.n)+'</div>'+(w.p?'<div style="color:#e8478b;font-weight:700">'+esc(w.p)+'</div>':'')+'<div style="font-size:13px;opacity:.7">💌 Papa va regarder</div></div>';
     L.appendChild(d)})}
 
-function kidShow(){
-  K=slug();let o=document.getElementById("kid");
-  if(!K){if(o)o.remove();const s=document.getElementById("kd_sh");if(s)s.remove();document.body.style.overflow="";return}
-  if(o){const t=o.querySelector("h1");if(t)t.textContent="✨ Les souhaits de "+KIDS[K]+" ✨";kidRender();return}
-  document.body.style.overflow="hidden";
-  o=document.createElement("div");o.id="kid";
-  o.style.cssText="position:fixed;inset:0;z-index:9999;overflow:auto;background:linear-gradient(180deg,#d9ecff,#e4dcff);color:#1d2a4a;padding:22px 16px 120px";
-  o.innerHTML='<div style="max-width:520px;margin:0 auto"><h1 style="text-align:center;font-size:24px;margin:10px 0 4px">✨ Les souhaits de '+KIDS[K]+' ✨</h1><p style="text-align:center;margin:0 0 14px;opacity:.8">Ajoute ici ce dont tu rêves pour Noël</p><div id="kd_list"></div></div>'
+function kidApp(){document.documentElement.dataset.kid="1";document.title="Mes souhaits";
+  document.querySelectorAll('link[rel="manifest"]').forEach(e=>e.remove());
+  let m=document.querySelector('meta[name="apple-mobile-web-app-title"]');if(!m){m=document.createElement("meta");m.name="apple-mobile-web-app-title";document.head.appendChild(m)}m.content="Mes souhaits";
+  try{const c=document.createElement("canvas");c.width=c.height=180;const x=c.getContext("2d");const g=x.createLinearGradient(0,0,180,180);g.addColorStop(0,"#e8478b");g.addColorStop(1,"#9b7bff");x.fillStyle=g;x.fillRect(0,0,180,180);x.textAlign="center";x.textBaseline="middle";x.font="96px serif";x.fillText("\u{1F381}",90,92);x.font="34px serif";x.fillText("✨",148,34);const u=c.toDataURL("image/png");
+   document.querySelectorAll('link[rel="apple-touch-icon"],link[rel="icon"],link[rel="shortcut icon"]').forEach(e=>e.remove());
+   ["apple-touch-icon","icon"].forEach(r=>{const l=document.createElement("link");l.rel=r;l.href=u;document.head.appendChild(l)})}catch(e){}}
+
+const g=id=>document.getElementById(id);
+function clean(){["kd_fab","kd_sh"].forEach(i=>{const e=g(i);if(e)e.remove()})}
+
+function showPin(){
+  clean();const o=g("kid");
+  o.innerHTML='<div style="max-width:360px;margin:12vh auto 0;text-align:center"><div style="font-size:64px">🎁</div><h1 style="font-size:24px;margin:8px 0 4px">Mes souhaits de Noël</h1><p style="margin:0 0 18px;opacity:.8">Tape ton code secret</p>'
+   +'<input id="kd_pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" style="width:100%;box-sizing:border-box;text-align:center;font-size:34px;letter-spacing:12px;padding:14px;border:2px solid #cfd9ff;border-radius:16px;margin-bottom:12px">'
+   +'<button id="kd_go" style="width:100%;padding:15px;border:0;border-radius:14px;font-size:18px;font-weight:700;color:#fff;background:linear-gradient(135deg,#e8478b,#9b7bff);cursor:pointer">Entrer ✨</button>'
+   +'<p id="kd_err" style="color:#d6336c;min-height:22px;margin-top:10px"></p></div>';
+  const go=()=>{const w=WHO[hh(g("kd_pin").value.trim())];
+    if(!w){g("kd_err").textContent="Ce n’est pas le bon code 🙈";g("kd_pin").value="";return}
+    K=w;try{localStorage.setItem("kidwho",w)}catch(e){}showList()};
+  g("kd_go").onclick=go;g("kd_pin").onkeydown=e=>{if(e.key==="Enter")go()}}
+
+function showList(){
+  clean();const o=g("kid");
+  o.innerHTML='<div style="max-width:520px;margin:0 auto"><h1 style="text-align:center;font-size:24px;margin:10px 0 4px">✨ Les souhaits de '+KIDS[K]+' ✨</h1><p style="text-align:center;margin:0 0 14px;opacity:.8">Ajoute ici ce dont tu rêves pour Noël</p><div id="kd_list"></div>'
+   +'<p style="text-align:center;margin-top:28px"><a href="#" id="kd_out" style="color:#5a6a9a;font-size:14px">🔒 Changer d’enfant</a></p></div>'
    +'<button id="kd_fab" aria-label="Ajouter un souhait" style="position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom));width:66px;height:66px;border-radius:50%;border:0;font-size:38px;line-height:1;color:#fff;background:linear-gradient(135deg,#e8478b,#9b7bff);box-shadow:0 8px 22px rgba(120,80,200,.45);cursor:pointer">+</button>';
-  document.body.appendChild(o);
+  g("kd_out").onclick=e=>{e.preventDefault();try{localStorage.removeItem("kidwho")}catch(x){}K=null;showPin()};
   const sh=document.createElement("div");sh.id="kd_sh";
   sh.style.cssText="display:none;position:fixed;inset:0;z-index:10000;background:rgba(20,30,70,.5);align-items:flex-end;justify-content:center";
   const I="width:100%;box-sizing:border-box;padding:12px;border:2px solid #d9e2ff;border-radius:12px;font-size:16px;margin:4px 0 12px;font-family:inherit";
@@ -413,7 +432,6 @@ function kidShow(){
    +'<button id="kd_ok" style="width:100%;padding:15px;border:0;border-radius:14px;font-size:18px;font-weight:700;color:#fff;background:linear-gradient(135deg,#e8478b,#9b7bff);cursor:pointer">Envoyer à Papa 💌</button>'
    +'<button id="kd_no" style="width:100%;padding:12px;border:0;background:none;font-size:16px;margin-top:6px;color:#5a6a9a;cursor:pointer">Annuler</button></div>';
   document.body.appendChild(sh);
-  const g=id=>document.getElementById(id);
   g("kd_fab").onclick=()=>{sh.style.display="flex"};
   g("kd_no").onclick=()=>{sh.style.display="none"};
   g("kd_ok").onclick=()=>{
@@ -428,8 +446,15 @@ function kidShow(){
       catch(e){alert("Oups, ça n’a pas marché. Réessaie.")}
       b.disabled=false};
     if(f)shrink(f,380,0.78,go);else go("")};
-  kidRender();
-}
+  kidRender()}
+
+function kidShow(){
+  let o=g("kid");
+  if(!isKid()){if(document.documentElement.dataset.kid){location.reload();return}if(o)o.remove();clean();document.body.style.overflow="";return}
+  kidApp();
+  if(!o){document.body.style.overflow="hidden";o=document.createElement("div");o.id="kid";
+    o.style.cssText="position:fixed;inset:0;z-index:9999;overflow:auto;background:linear-gradient(180deg,#d9ecff,#e4dcff);color:#1d2a4a;padding:22px 16px 120px";document.body.appendChild(o)}
+  if(K)showList();else showPin()}
 
 /* côté Papa : panneau de validation */
 async function accept(w,list){
