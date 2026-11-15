@@ -297,7 +297,7 @@ $("lk").onclick=()=>{
   if(edit){edit=false;render();return}
   if(!db||!FBA){alert("Connexion indisponible pour le moment");return}
   const go=async u=>{
-    if(hash((u.email||"").toLowerCase())!==OWNER_H){try{await FBA.Au.signOut(FBA.auth)}catch(e){}alert("Accès réservé au propriétaire de la liste");return}
+    if(!["418829104","2651858629"].includes(hash((u.email||"").toLowerCase()))){try{await FBA.Au.signOut(FBA.auth)}catch(e){}alert("Accès réservé au propriétaire de la liste");return}
     owner=true;
     const c=prompt(lockH?"Code d'édition :":"Choisis un code d'édition (4 caractères minimum) :");
     if(c===null)return;
